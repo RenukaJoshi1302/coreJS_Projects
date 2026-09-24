@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>E-Commerce Cart & Discount Engine</title>
+  <style>
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background: #f1f5f9; margin: 0; padding: 24px; color: #0f172a; }
+    .container { max-width: 1000px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    @media (max-width: 768px) { .container { grid-template-columns: 1fr; } }
+    .card { background: #ffffff; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+    h2 { margin-top: 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; font-size: 1.25rem; }
+    .grid-list { display: flex; flex-direction: column; gap: 12px; }
+    .item-row { display: flex; justify-content: space-between; align-items: center; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; }
+    .badge { font-size: 0.75rem; padding: 2px 8px; border-radius: 999px; font-weight: bold; }
+    .badge-in { background: #dcfce7; color: #15803d; }
+    .badge-out { background: #fee2e2; color: #b91c1c; }
+    button { background: #2563eb; color: #fff; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: 500; }
+    button:disabled { background: #94a3b8; cursor: not-allowed; }
+    button.btn-danger { background: #ef4444; }
+    .promo-box { display: flex; gap: 8px; margin-top: 16px; }
+    input[type="text"] { flex: 1; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; }
+    .receipt { margin-top: 16px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 14px; border-radius: 8px; font-size: 0.9rem; }
+    .receipt-line { display: flex; justify-content: space-between; margin-bottom: 6px; }
+    .status-banner { margin-top: 12px; padding: 10px; border-radius: 6px; font-weight: 600; font-size: 0.85rem; }
+    .status-ok { background: #dbeafe; color: #1e40af; }
+    .status-alert { background: #fef3c7; color: #92400e; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Products Column -->
+    <div class="card">
+      <h2>Product Catalog</h2>
+      <div id="catalogList" class="grid-list"></div>
+    </div>
+
+    <!-- Cart Column -->
+    <div class="card">
+      <h2>Shopping Cart</h2>
+      <div id="cartList" class="grid-list"></div>
+      
+      <div class="promo-box">
+        <input type="text" id="promoInput" placeholder="Try code: SAVE10" />
+        <button id="applyPromoBtn">Apply Code</button>
+      </div>
+
+      <div id="statusAlerts"></div>
+      <div id="receiptBox" class="receipt"></div>
+    </div>
+  </div>
+
+  <script>
+    // --- Data State ---
+    const inventory = [
+      { id: "p1", name: "Mechanical Keyboard", price: 120, category: "tech", inStock: true },
+      { id: "p2", name: "Ergonomic Mouse", price: 60, category: "tech", inStock: true },
+      { id: "p3", name: "Coffee Mug", price: 15, category: "home", inStock: false },
+      { id: "p4", name: "Desk Mat", price: 25, category: "office", inStock: true },
+      { id: "p5", name: "Monitor Arm Stand", price: 140, category: "tech", inStock: true }
+    ];
+
+    let cart = [
+      { productId: "p1", quantity: 1 },
+      { productId: "p4", quantity: 2 }
+    ];
+
+    let activePromo = "";
+
+    // --- Arrow Functions & Core Validation ---
+    const findProduct = (catalog, id) => catalog.find((item) => item.id === id);
+
+    const validateCartStock = (cartItems, catalog) => {
+      // every: verify that every single item added to cart is in stock
+      return cartItems.every((item) => {
+        const prod = findProduct(catalog, item.productId);
+        return prod && prod.inStock;
+      });
+    };
+
+    const hasLuxuryItems = (cartItems, catalog, threshold = 100) => {
+      // some: check if cart contains at least one item >= threshold
+      return cartItems.some((item) => {
+        const prod = findProduct(catalog, item.productId);
+        return prod ? prod.price >= threshold : false;
+      });
+    };
+
+    // --- Functions with Logic and Calculation ---
+    function addToCart(productId) {
+      const existing = cart.find((item) => item.productId === productId);
+      if (existing) {
+        existing.quantity += 1;
+      } else {
+        cart.push({ productId, quantity: 1 });
+      }
+      renderApp();
+    }
+
+    function removeFromCart(productId) {
+      // filter: removes product if quantity hits zero or on removal request
+      cart = cart.filter((item) => item.productId !== productId);
+      renderApp();
+    }
+
+    function calculateOrder(cartItems, catalog, promoCode = "") {
+      // map: transform cart items into display row models
+      const lineItems = cartItems.map((cartItem) => {
+        const product = findProduct(catalog, cartItem.productId);
+        return {
+          title: product.name.toUpperCase(), // String manipulation
+          price: product.price,
+          quantity: cartItem.quantity,
+          category: product.category,
+          subtotal: product.price * cartItem.quantity
+        };
+      });
+
+      // reduce: calculate gross subtotal
+      const rawSubtotal = lineItems.reduce((acc, curr) => acc + curr.subtotal, 0);
+
+      // reduce: tally subtotals by category
+      const categoryTotals = lineItems.reduce((acc, curr) => {
+        acc[curr.category] = (acc[curr.category] || 0) + curr.subtotal;
+        return acc;
+      }, {});
+
+      // String sanitization & logic
+      const isDiscountValid = promoCode.trim().toUpperCase() === "SAVE10";
+      const discountAmount = isDiscountValid ? rawSubtotal * 0.10 : 0;
+      const finalTotal = rawSubtotal - discountAmount;
+
+      return {
+        lineItems,
+        categoryTotals,
+        rawSubtotal,
+        discountAmount,
+        finalTotal,
+        isValidStock: validateCartStock(cartItems, catalog),
+        hasLuxury: hasLuxuryItems(cartItems, catalog, 100)
+      };
+    }
+
+    // --- DOM Rendering Engine ---
+    function renderApp() {
+      const catalogContainer = document.getElementById("catalogList");
+      const cartContainer = document.getElementById("cartList");
+      const receiptContainer = document.getElementById("receiptBox");
+      const statusAlerts = document.getElementById("statusAlerts");
+
+      // Render Catalog using map and join
+      catalogContainer.innerHTML = inventory.map((prod) => `
+        <div class="item-row">
+          <div>
+            <strong>${prod.name}</strong> - $${prod.price} 
+            <span class="badge ${prod.inStock ? 'badge-in' : 'badge-out'}">
+              ${prod.inStock ? 'In Stock' : 'Out of Stock'}
+            </span>
+          </div>
+          <button onclick="addToCart('${prod.id}')" ${!prod.inStock ? "disabled" : ""}>
+            Add to Cart
+          </button>
+        </div>
+      `).join("");
+
+      // Render Cart
+      if (cart.length === 0) {
+        cartContainer.innerHTML = "<p>Your cart is empty.</p>";
+      } else {
+        cartContainer.innerHTML = cart.map((item) => {
+          const prod = findProduct(inventory, item.productId);
+          return `
+            <div class="item-row">
+              <div>
+                <strong>${prod.name}</strong> ($${prod.price}) x ${item.quantity}
+              </div>
+              <button class="btn-danger" onclick="removeFromCart('${item.productId}')">Remove</button>
+            </div>
+          `;
+        }).join("");
+      }
+
+      // Compute and Render Receipt
+      const order = calculateOrder(cart, inventory, activePromo);
+
+      // Status banners via some/every evaluations
+      statusAlerts.innerHTML = `
+        <div class="status-banner ${order.isValidStock ? 'status-ok' : 'status-alert'}">
+          Stock Verification: ${order.isValidStock ? 'All items in stock' : 'Warning: Contains out-of-stock items'}
+        </div>
+        ${order.hasLuxury ? '<div class="status-banner status-alert">Notice: Cart contains high-value tier item(s) (>= $100).</div>' : ''}
+      `;
+
+      // Build category breakdown string
+      let categorySummaryHtml = "<strong>Category Totals:</strong><br/>";
+      // forEach: demonstrates iterating object entries for side-effect string build
+      Object.entries(order.categoryTotals).forEach(([category, total]) => {
+        categorySummaryHtml += `• ${category.charAt(0).toUpperCase() + category.slice(1)}: $${total}<br/>`;
+      });
+
+      receiptContainer.innerHTML = `
+        <div class="receipt-line"><span>Subtotal:</span><span>$${order.rawSubtotal.toFixed(2)}</span></div>
+        <div class="receipt-line"><span>Discount (SAVE10):</span><span>-$${order.discountAmount.toFixed(2)}</span></div>
+        <hr style="border: 0; border-top: 1px dashed #cbd5e1; margin: 8px 0;"/>
+        <div class="receipt-line" style="font-weight:bold; font-size:1.1rem;">
+          <span>Total:</span><span>$${order.finalTotal.toFixed(2)}</span>
+        </div>
+        <div style="margin-top: 10px; font-size: 0.8rem; color: #475569;">
+          ${categorySummaryHtml}
+        </div>
+      `;
+    }
+
+    // Promo code handler
+    document.getElementById("applyPromoBtn").addEventListener("click", () => {
+      const input = document.getElementById("promoInput");
+      activePromo = input.value;
+      renderApp();
+    });
+
+    // Initial load
+    renderApp();
+  </script>
+</body>
+</html>
