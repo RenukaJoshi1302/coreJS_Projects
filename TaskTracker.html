@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Interview DOM: Task Manager</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+      }
+
+      body {
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background-color: #f1f5f9;
+        padding: 1.5rem;
+      }
+
+      .app-card {
+        background: #ffffff;
+        padding: 2rem;
+        border-radius: 16px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+        max-width: 520px;
+        width: 100%;
+      }
+
+      header {
+        margin-bottom: 1.5rem;
+      }
+
+      header h1 {
+        font-size: 1.5rem;
+        color: #0f172a;
+      }
+
+      header p {
+        font-size: 0.85rem;
+        color: #64748b;
+        margin-top: 0.25rem;
+      }
+
+      /* Input area */
+      .input-form {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1.25rem;
+      }
+
+      input[type="text"] {
+        flex: 1;
+        padding: 0.75rem 1rem;
+        border: 2px solid #e2e8f0;
+        border-radius: 8px;
+        outline: none;
+        font-size: 0.95rem;
+        transition: border-color 0.2s;
+      }
+
+      input[type="text"]:focus {
+        border-color: #2563eb;
+      }
+
+      .btn-add {
+        background: #2563eb;
+        color: white;
+        border: none;
+        padding: 0 1.25rem;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: opacity 0.2s;
+      }
+
+      .btn-add:hover {
+        opacity: 0.9;
+      }
+
+      /* Filter buttons */
+      .filter-group {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1.25rem;
+        border-bottom: 1px solid #f1f5f9;
+        padding-bottom: 1rem;
+      }
+
+      .filter-btn {
+        background: none;
+        border: none;
+        padding: 0.4rem 0.8rem;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #64748b;
+        cursor: pointer;
+        border-radius: 6px;
+        transition: all 0.2s;
+      }
+
+      .filter-btn.active {
+        background-color: #eff6ff;
+        color: #2563eb;
+      }
+
+      /* Task list */
+      .task-list {
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        max-height: 280px;
+        overflow-y: auto;
+      }
+
+      .task-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.75rem 1rem;
+        background: #f8fafc;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        transition: background-color 0.2s;
+      }
+
+      .task-item.completed span {
+        text-decoration: line-through;
+        color: #94a3b8;
+      }
+
+      .task-content {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        cursor: pointer;
+        flex: 1;
+      }
+
+      .btn-delete {
+        background: none;
+        border: none;
+        color: #ef4444;
+        font-weight: bold;
+        cursor: pointer;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        opacity: 0.7;
+        transition: opacity 0.2s;
+      }
+
+      .btn-delete:hover {
+        opacity: 1;
+      }
+
+      .empty-state {
+        text-align: center;
+        color: #94a3b8;
+        font-size: 0.9rem;
+        padding: 1.5rem 0;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="app-card">
+      <header>
+        <h1>Task Tracker</h1>
+        <p>State management, event delegation & persistence</p>
+      </header>
+
+      <form class="input-form" id="task-form">
+        <input
+          type="text"
+          id="task-input"
+          placeholder="What needs to be done?"
+          required
+        />
+        <button type="submit" class="btn-add">Add</button>
+      </form>
+
+      <div class="filter-group" id="filter-buttons">
+        <button class="filter-btn active" data-filter="all">All</button>
+        <button class="filter-btn" data-filter="active">Active</button>
+        <button class="filter-btn" data-filter="completed">Completed</button>
+      </div>
+
+      <ul class="task-list" id="task-list"></ul>
+    </main>
+
+    <script>
+      // 1. Central State (Single Source of Truth)
+      let tasks = JSON.parse(localStorage.getItem("tasks_db")) || [
+        { id: 1, text: "Explain Event Delegation", completed: true },
+        { id: 2, text: "Master LocalStorage persistence", completed: false },
+      ];
+      let currentFilter = "all";
+
+      // DOM Selectors
+      const taskForm = document.getElementById("task-form");
+      const taskInput = document.getElementById("task-input");
+      const taskList = document.getElementById("task-list");
+      const filterButtons = document.getElementById("filter-buttons");
+
+      // Save helper
+      function saveToLocalStorage() {
+        localStorage.setItem("tasks_db", JSON.stringify(tasks));
+      }
+
+      // 2. Render function: Derives DOM strictly from State
+      function renderTasks() {
+        taskList.innerHTML = "";
+
+        // Filter state
+        const filteredTasks = tasks.filter((task) => {
+          if (currentFilter === "active") return !task.completed;
+          if (currentFilter === "completed") return task.completed;
+          return true;
+        });
+
+        if (filteredTasks.length === 0) {
+          taskList.innerHTML = `<li class="empty-state">No tasks to display</li>`;
+          return;
+        }
+
+        filteredTasks.forEach((task) => {
+          const li = document.createElement("li");
+          li.className = `task-item ${task.completed ? "completed" : ""}`;
+          li.dataset.id = task.id; // dataset attribute used for event delegation
+
+          li.innerHTML = `
+          <div class="task-content">
+            <input type="checkbox" ${task.completed ? "checked" : ""} />
+            <span>${task.text}</span>
+          </div>
+          <button class="btn-delete" aria-label="Delete task">&times;</button>
+        `;
+
+          taskList.appendChild(li);
+        });
+      }
+
+      // 3. Create (Submit Event)
+      taskForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const text = taskInput.value.trim();
+        if (!text) return;
+
+        const newTask = {
+          id: Date.now(), // Unique ID using timestamp
+          text,
+          completed: false,
+        };
+
+        tasks.push(newTask);
+        saveToLocalStorage();
+        renderTasks();
+        taskInput.value = "";
+      });
+
+      // 4. Update & Delete via Event Delegation (Single listener on parent UL)
+      taskList.addEventListener("click", (e) => {
+        const taskItem = e.target.closest(".task-item");
+        if (!taskItem) return;
+
+        const taskId = Number(taskItem.dataset.id);
+
+        // Handle Delete
+        if (e.target.classList.contains("btn-delete")) {
+          tasks = tasks.filter((t) => t.id !== taskId);
+          saveToLocalStorage();
+          renderTasks();
+          return;
+        }
+
+        // Handle Toggle Checkbox/Text
+        if (
+          e.target.matches("input[type='checkbox']") ||
+          e.target.closest(".task-content")
+        ) {
+          tasks = tasks.map((t) => {
+            if (t.id === taskId) {
+              return { ...t, completed: !t.completed };
+            }
+            return t;
+          });
+          saveToLocalStorage();
+          renderTasks();
+        }
+      });
+
+      // 5. Filter Handler (Event Delegation on filter container)
+      filterButtons.addEventListener("click", (e) => {
+        if (!e.target.classList.contains("filter-btn")) return;
+
+        document
+          .querySelectorAll(".filter-btn")
+          .forEach((btn) => btn.classList.remove("active"));
+        e.target.classList.add("active");
+
+        currentFilter = e.target.dataset.filter;
+        renderTasks();
+      });
+
+      // Initial boot
+      renderTasks();
+    </script>
+  </body>
+</html>
