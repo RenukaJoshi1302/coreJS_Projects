@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+  <body>
+    <h2>Mini Flashcard Deck</h2>
+
+    <div id="deck"></div>
+    <p id="progress"></p>
+
+    <script>
+      let deck = [
+        {
+          id: 1,
+          q: "What does .filter() return?",
+          a: "A new array with matching items.",
+          show: false,
+          mastered: false,
+        },
+        {
+          id: 2,
+          q: "Does .map() mutate the original array?",
+          a: "No, it returns a new array.",
+          show: false,
+          mastered: true,
+        },
+        {
+          id: 3,
+          q: "What does .some() return?",
+          a: "A boolean (true or false).",
+          show: false,
+          mastered: false,
+        },
+      ];
+
+      // find(): Reveals/hides answer on a card
+      function toggleAnswer(id) {
+        const card = deck.find((c) => c.id === id);
+        if (card) card.show = !card.show;
+        render();
+      }
+
+      // find(): Marks as mastered
+      function toggleMastered(id) {
+        const card = deck.find((c) => c.id === id);
+        if (card) card.mastered = !card.mastered;
+        render();
+      }
+
+      function render() {
+        const container = document.getElementById("deck");
+        const progress = document.getElementById("progress");
+
+        // map(): Display cards with conditional answer visibility
+        container.innerHTML = deck
+          .map(
+            (c) => `
+        <div style="border: 1px solid #ccc; padding: 10px; margin: 8px 0;">
+          <p><strong>Q:</strong> ${c.q}</p>
+          <p style="color: blue;"><strong>A:</strong> ${c.show ? c.a : "<em>(Hidden - Click reveal)</em>"}</p>
+          <button onclick="toggleAnswer(${c.id})">${c.show ? "Hide" : "Reveal"}</button>
+          <button onclick="toggleMastered(${c.id})">${c.mastered ? "Unlearn" : "Mastered ✔"}</button>
+        </div>
+      `,
+          )
+          .join("");
+
+        // reduce(): Count mastered cards
+        const masteredCount = deck.reduce(
+          (acc, c) => (c.mastered ? acc + 1 : acc),
+          0,
+        );
+
+        // every(): Checks if whole deck is completed
+        const allDone = deck.every((c) => c.mastered);
+
+        progress.innerHTML = `Mastered: ${masteredCount} / ${deck.length} | Deck completed? <strong>${allDone ? "🎉 Yes!" : "Not yet"}</strong>`;
+      }
+
+      render();
+    </script>
+  </body>
+</html>

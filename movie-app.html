@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+  <body>
+    <h2>Mini Movie Watchlist</h2>
+    <input
+      type="text"
+      id="search"
+      placeholder="Search by title..."
+      oninput="render()"
+    />
+
+    <ul id="movieList"></ul>
+    <p id="movieStats"></p>
+
+    <script>
+      let movies = [
+        { id: 1, title: "Inception", rating: 9, watched: true },
+        { id: 2, title: "Interstellar", rating: 8.5, watched: false },
+        { id: 3, title: "The Room", rating: 3.5, watched: true },
+      ];
+
+      // find(): Toggles watched status
+      function toggleWatched(id) {
+        const movie = movies.find((m) => m.id === id);
+        if (movie) movie.watched = !movie.watched;
+        render();
+      }
+
+      function render() {
+        const query = document
+          .getElementById("search")
+          .value.toLowerCase()
+          .trim();
+        const list = document.getElementById("movieList");
+        const stats = document.getElementById("movieStats");
+
+        // filter(): Keeps only movies matching the search string
+        const filtered = movies.filter((m) =>
+          m.title.toLowerCase().includes(query),
+        );
+
+        // map(): Render remaining movies
+        list.innerHTML = filtered
+          .map(
+            (m) => `
+        <li>
+          <strong>${m.title}</strong> - Rating: ${m.rating}/10 (${m.watched ? "Watched" : "Plan to watch"})
+          <button onclick="toggleWatched(${m.id})">Toggle Status</button>
+        </li>
+      `,
+          )
+          .join("");
+
+        // reduce(): Calculate average rating
+        const avg =
+          movies.reduce((sum, m) => sum + m.rating, 0) / movies.length;
+
+        // some(): Check if there are any top-rated masterpieces (>= 9)
+        const hasMasterpiece = movies.some((m) => m.rating >= 9);
+
+        stats.innerHTML = `Average Rating: <strong>${avg.toFixed(1)}/10</strong> | Top film present: <strong>${hasMasterpiece ? "Yes" : "No"}</strong>`;
+      }
+
+      render();
+    </script>
+  </body>
+</html>

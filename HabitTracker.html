@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Smart Habit & Task Tracker</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        font-family: sans-serif;
+      }
+      body {
+        background-color: #f4f6f8;
+        margin: 0;
+        padding: 20px;
+        display: flex;
+        justify-content: center;
+      }
+      .app-card {
+        background: #ffffff;
+        width: 100%;
+        max-width: 500px;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      }
+      h2,
+      h3 {
+        margin-top: 0;
+        text-align: center;
+      }
+
+      .form-row {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 16px;
+      }
+      input[type="text"] {
+        flex: 1;
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+      }
+      select {
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+      }
+      button {
+        padding: 8px 12px;
+        background: #007bff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #0056b3;
+      }
+
+      .filter-tabs {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 12px;
+      }
+      .filter-tabs button {
+        flex: 1;
+        background: #6c757d;
+        font-size: 0.85rem;
+      }
+      .filter-tabs button.active {
+        background: #212529;
+        font-weight: bold;
+      }
+
+      ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+      li {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px;
+        border-bottom: 1px solid #eee;
+      }
+      .task-info {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .completed-text {
+        text-decoration: line-through;
+        color: #888;
+      }
+      .btn-delete {
+        background: #dc3545;
+        padding: 4px 8px;
+        font-size: 0.8rem;
+      }
+
+      .stats-box {
+        margin-top: 20px;
+        padding: 12px;
+        background: #e9ecef;
+        border-radius: 6px;
+        font-size: 0.9rem;
+        line-height: 1.5;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app-card">
+      <h2>Smart Task Tracker</h2>
+
+      <!-- Input Form -->
+      <div class="form-row">
+        <input
+          type="text"
+          id="taskInput"
+          placeholder="Add a habit or task..."
+        />
+        <select id="prioritySelect">
+          <option value="normal">Normal</option>
+          <option value="urgent">Urgent</option>
+        </select>
+        <button id="addBtn">Add</button>
+      </div>
+
+      <!-- Filter Buttons -->
+      <div class="filter-tabs">
+        <button class="active" onclick="setFilter('all')">All</button>
+        <button onclick="setFilter('active')">Active</button>
+        <button onclick="setFilter('completed')">Done</button>
+      </div>
+
+      <!-- Task List -->
+      <ul id="taskList"></ul>
+
+      <!-- Interview-Ready Stats Box -->
+      <div class="stats-box" id="statsDisplay"></div>
+    </div>
+
+    <script>
+      // ==========================================
+      // 1. DATA STATE (Arrays & Objects)
+      // ==========================================
+      let tasks = [
+        {
+          id: 1,
+          title: "Learn JavaScript Array Methods",
+          completed: true,
+          priority: "urgent",
+        },
+        {
+          id: 2,
+          title: "Practice coding interview questions",
+          completed: false,
+          priority: "urgent",
+        },
+        {
+          id: 3,
+          title: "Drink 2L of water",
+          completed: false,
+          priority: "normal",
+        },
+      ];
+
+      let currentFilter = "all";
+
+      // ==========================================
+      // 2. HELPER FUNCTIONS (Strings, Arrows, Parameters)
+      // ==========================================
+      // Sanitizes strings: trims and capitalizes the first letter
+      const cleanTitle = (text = "") => {
+        const trimmed = text.trim();
+        if (!trimmed) return "";
+        return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+      };
+
+      // ==========================================
+      // 3. CORE LOGIC (Map, Filter, Find, Mutations)
+      // ==========================================
+      function addTask() {
+        const input = document.getElementById("taskInput");
+        const priority = document.getElementById("prioritySelect").value;
+        const formattedTitle = cleanTitle(input.value);
+
+        if (!formattedTitle) return; // Guard clause
+
+        const newTask = {
+          id: Date.now(),
+          title: formattedTitle,
+          completed: false,
+          priority: priority,
+        };
+
+        tasks.push(newTask);
+        input.value = "";
+        render();
+      }
+
+      // find: Locate a task by ID to toggle status
+      function toggleTask(id) {
+        const target = tasks.find((t) => t.id === id);
+        if (target) {
+          target.completed = !target.completed;
+        }
+        render();
+      }
+
+      // filter: Exclude the task by ID to delete it
+      function deleteTask(id) {
+        tasks = tasks.filter((t) => t.id !== id);
+        render();
+      }
+
+      function setFilter(filterType) {
+        currentFilter = filterType;
+        // forEach: update active tab style (side-effects)
+        document.querySelectorAll(".filter-tabs button").forEach((btn) => {
+          btn.classList.toggle(
+            "active",
+            btn.innerText.toLowerCase() === filterType,
+          );
+        });
+        render();
+      }
+
+      // ==========================================
+      // 4. INTERVIEW CHECKS (Reduce, Some, Every)
+      // ==========================================
+      function getTaskStats() {
+        // reduce: count total completed tasks
+        const completedCount = tasks.reduce((count, task) => {
+          return task.completed ? count + 1 : count;
+        }, 0);
+
+        // every: check if ALL tasks are completed
+        const allDone =
+          tasks.length > 0 && tasks.every((task) => task.completed);
+
+        // some: check if there is AT LEAST ONE incomplete urgent task
+        const hasUrgentPending = tasks.some(
+          (task) => !task.completed && task.priority === "urgent",
+        );
+
+        return {
+          total: tasks.length,
+          completedCount,
+          allDone,
+          hasUrgentPending,
+        };
+      }
+
+      // ==========================================
+      // 5. RENDER (Map to transform data to HTML)
+      // ==========================================
+      function render() {
+        const listEl = document.getElementById("taskList");
+        const statsEl = document.getElementById("statsDisplay");
+
+        // filter: filter tasks based on active tab
+        const visibleTasks = tasks.filter((task) => {
+          if (currentFilter === "active") return !task.completed;
+          if (currentFilter === "completed") return task.completed;
+          return true; // 'all'
+        });
+
+        // map: transform objects into HTML list items
+        listEl.innerHTML = visibleTasks
+          .map(
+            (task) => `
+        <li>
+          <div class="task-info">
+            <input 
+              type="checkbox" 
+              ${task.completed ? "checked" : ""} 
+              onchange="toggleTask(${task.id})" 
+            />
+            <span class="${task.completed ? "completed-text" : ""}">
+              ${task.priority === "urgent" ? "🔥 " : ""}${task.title}
+            </span>
+          </div>
+          <button class="btn-delete" onclick="deleteTask(${task.id})">Delete</button>
+        </li>
+      `,
+          )
+          .join("");
+
+        // Update statistics
+        const stats = getTaskStats();
+        statsEl.innerHTML = `
+        <strong>Progress:</strong> ${stats.completedCount} / ${stats.total} completed<br/>
+        <strong>All tasks finished?</strong> ${stats.allDone ? "🎉 Yes!" : "Not yet"}<br/>
+        <strong>Urgent task pending?</strong> ${stats.hasUrgentPending ? "⚠️ Yes, take action!" : "None"}
+      `;
+      }
+
+      // Event listener
+      document.getElementById("addBtn").addEventListener("click", addTask);
+
+      // Initial render
+      render();
+    </script>
+  </body>
+</html>

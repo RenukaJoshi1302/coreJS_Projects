@@ -1,0 +1,41 @@
+<!doctype html>
+<html>
+  <body>
+    <h3>Favorite Language Poll</h3>
+    <button onclick="vote('JavaScript')">JS</button>
+    <button onclick="vote('Python')">Python</button>
+    <button onclick="vote('Rust')">Rust</button>
+
+    <div id="results" style="margin-top: 15px"></div>
+
+    <script>
+      // 1. Array of string votes
+      let votes = ["JavaScript", "Python", "JavaScript"];
+
+      function vote(lang) {
+        votes.push(lang);
+        render();
+      }
+
+      function render() {
+        // 2. reduce: count how many times each string appears
+        const counts = votes.reduce((acc, lang) => {
+          acc[lang] = (acc[lang] || 0) + 1;
+          return acc;
+        }, {});
+
+        // 3. Object.entries + map to display
+        const resultDiv = document.getElementById("results");
+        resultDiv.innerHTML = Object.entries(counts)
+          .map(
+            ([lang, count]) => `
+        <div><strong>${lang}</strong>: ${count} votes</div>
+      `,
+          )
+          .join("");
+      }
+
+      render();
+    </script>
+  </body>
+</html>

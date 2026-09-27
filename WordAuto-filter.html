@@ -1,0 +1,42 @@
+<!doctype html>
+<html>
+  <body>
+    <h3>Live Student Search</h3>
+    <input
+      type="text"
+      id="query"
+      placeholder="Type a name..."
+      oninput="searchNames()"
+    />
+    <ul id="list"></ul>
+
+    <script>
+      const students = [
+        "Alice Smith",
+        "Bob Jones",
+        "Charlie Brown",
+        "Alex Turner",
+        "David Miller",
+      ];
+
+      function searchNames() {
+        const q = document.getElementById("query").value.toLowerCase().trim();
+
+        // filter: match elements containing search string
+        const matched = students.filter((name) =>
+          name.toLowerCase().includes(q),
+        );
+
+        // map: display matches, or fallback if none match
+        const listEl = document.getElementById("list");
+        if (matched.length === 0) {
+          listEl.innerHTML = "<li>No matches found</li>";
+        } else {
+          listEl.innerHTML = matched.map((name) => `<li>${name}</li>`).join("");
+        }
+      }
+
+      searchNames(); // show full list initially
+    </script>
+  </body>
+</html>

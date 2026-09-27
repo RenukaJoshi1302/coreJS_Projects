@@ -1,0 +1,52 @@
+<!doctype html>
+<html>
+  <body>
+    <h3>Shopping Checkout</h3>
+    <p>Items in cart: Shirt ($25), Jeans ($40)</p>
+    <input
+      type="text"
+      id="couponInput"
+      placeholder="Try 'SAVE10' or 'SAVE20'"
+    />
+    <button onclick="applyCoupon()">Apply</button>
+
+    <p id="billOutput"></p>
+
+    <script>
+      const items = [
+        { name: "Shirt", price: 25 },
+        { name: "Jeans", price: 40 },
+      ];
+
+      const coupons = [
+        { code: "SAVE10", discount: 0.1 },
+        { code: "SAVE20", discount: 0.2 },
+      ];
+
+      function applyCoupon() {
+        const code = document
+          .getElementById("couponInput")
+          .value.trim()
+          .toUpperCase();
+
+        // 1. reduce: calculate subtotal
+        const subtotal = items.reduce((sum, item) => sum + item.price, 0);
+
+        // 2. find: look up the promo object
+        const matchedCoupon = coupons.find((c) => c.code === code);
+
+        const discountRate = matchedCoupon ? matchedCoupon.discount : 0;
+        const discountAmount = subtotal * discountRate;
+        const finalPrice = subtotal - discountAmount;
+
+        document.getElementById("billOutput").innerHTML = `
+        Subtotal: $${subtotal}<br>
+        Discount: -$${discountAmount.toFixed(2)} (${discountRate * 100}%)<br>
+        <strong>Final: $${finalPrice.toFixed(2)}</strong>
+      `;
+      }
+
+      applyCoupon(); // default run
+    </script>
+  </body>
+</html>

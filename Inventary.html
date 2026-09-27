@@ -1,0 +1,58 @@
+<!doctype html>
+<html>
+  <body>
+    <h3>Pantry Inventory</h3>
+    <div id="pantry"></div>
+    <p id="alertBox" style="color: darkorange; font-weight: bold"></p>
+
+    <script>
+      let inventory = [
+        { name: "Rice (kg)", qty: 5 },
+        { name: "Milk (bottles)", qty: 2 },
+        { name: "Coffee (packs)", qty: 1 },
+      ];
+
+      function consume(name) {
+        // find: locate item and decrease quantity
+        const item = inventory.find((i) => i.name === name);
+        if (item && item.qty > 0) {
+          item.qty -= 1;
+        }
+        render();
+      }
+
+      function render() {
+        const container = document.getElementById("pantry");
+
+        // map: build item buttons
+        container.innerHTML = inventory
+          .map(
+            (i) => `
+        <div>
+          ${i.name}: <strong>${i.qty}</strong> left
+          <button onclick="consume('${i.name}')" ${i.qty === 0 ? "disabled" : ""}>Use 1</button>
+        </div>
+      `,
+          )
+          .join("");
+
+        // some(): check if ANY item has dropped to 1 or below
+        const hasLowStock = inventory.some((i) => i.qty <= 1);
+
+        // every(): check if everything is completely out of stock
+        const allDepleted = inventory.every((i) => i.qty === 0);
+
+        const alertEl = document.getElementById("alertBox");
+        if (allDepleted) {
+          alertEl.innerText = "🚨 All supplies are completely depleted!";
+        } else if (hasLowStock) {
+          alertEl.innerText = "⚠️ Low stock warning: restock needed soon!";
+        } else {
+          alertEl.innerText = "✅ Stock levels are healthy.";
+        }
+      }
+
+      render();
+    </script>
+  </body>
+</html>

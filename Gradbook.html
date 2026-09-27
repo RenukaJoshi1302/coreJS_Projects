@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Student Gradebook & Analytics</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      }
+      body {
+        background: #f8fafc;
+        margin: 0;
+        padding: 24px;
+        color: #1e293b;
+      }
+      .container {
+        max-width: 900px;
+        margin: 0 auto;
+      }
+      .card {
+        background: #ffffff;
+        border-radius: 10px;
+        padding: 20px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        margin-bottom: 20px;
+      }
+      h1,
+      h2 {
+        margin-top: 0;
+      }
+      .toolbar {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 16px;
+      }
+      button {
+        background: #0284c7;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+      button.active {
+        background: #0369a1;
+        font-weight: bold;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 12px;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 10px;
+        border-bottom: 1px solid #e2e8f0;
+      }
+      th {
+        background: #f1f5f9;
+      }
+      .grade-badge {
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-weight: bold;
+        font-size: 0.8rem;
+      }
+      .grade-A {
+        background: #dcfce7;
+        color: #166534;
+      }
+      .grade-B {
+        background: #e0f2fe;
+        color: #075985;
+      }
+      .grade-C {
+        background: #fef9c3;
+        color: #854d0e;
+      }
+      .grade-D {
+        background: #ffedd5;
+        color: #9a3412;
+      }
+      .grade-F {
+        background: #fee2e2;
+        color: #991b1b;
+      }
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        margin-top: 16px;
+      }
+      .stat-card {
+        background: #f8fafc;
+        padding: 12px;
+        border-left: 4px solid #0284c7;
+        border-radius: 4px;
+      }
+      .stat-card h4 {
+        margin: 0 0 6px 0;
+        color: #64748b;
+        font-size: 0.85rem;
+      }
+      .stat-card p {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="card">
+        <h1>Classroom Performance Analytics</h1>
+        <div class="toolbar">
+          <button id="filterAll" class="active">Show All</button>
+          <button id="filterHonor">Honor Roll (Avg ≥ 90)</button>
+          <button id="filterAtRisk">At Risk (Avg < 60)</button>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Clean Student Name</th>
+              <th>Raw Scores</th>
+              <th>Computed Avg</th>
+              <th>Letter Grade</th>
+            </tr>
+          </thead>
+          <tbody id="studentTableBody"></tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h2>Cohort Insights & Distribution</h2>
+        <div id="statsContainer" class="stats-grid"></div>
+      </div>
+    </div>
+
+    <script>
+      // Raw dirty data
+      const rawRoster = [
+        { id: 101, name: "  alice walker ", scores: [88, 92, 79, 95] },
+        { id: 102, name: "bob smith", scores: [55, 60, 58, 62] },
+        { id: 103, name: "charlie brown  ", scores: [72, 85, 80, 88] },
+        { id: 104, name: "diana prince", scores: [98, 95, 100, 96] },
+        { id: 105, name: "evan wright", scores: [40, 50, 45, 30] },
+      ];
+
+      let currentFilter = "all";
+
+      // --- Arrow Functions & Helper Logic ---
+      const computeAverage = (scores) => {
+        if (!scores.length) return 0;
+        // reduce: compute sum
+        const total = scores.reduce((sum, n) => sum + n, 0);
+        return Number((total / scores.length).toFixed(1));
+      };
+
+      const getGrade = (avg) => {
+        if (avg >= 90) return "A";
+        if (avg >= 80) return "B";
+        if (avg >= 70) return "C";
+        if (avg >= 60) return "D";
+        return "F";
+      };
+
+      // map: standardizes and enriches raw records
+      const processedStudents = rawRoster.map((student) => {
+        // String methods: clean and title-case
+        const formattedName = student.name
+          .trim()
+          .split(" ")
+          .map(
+            (part) =>
+              part.charAt(0).toUpperCase() + part.slice(1).toLowerCase(),
+          )
+          .join(" ");
+
+        const average = computeAverage(student.scores);
+        const grade = getGrade(average);
+
+        return {
+          id: student.id,
+          name: formattedName,
+          rawScores: student.scores.join(", "),
+          average,
+          grade,
+          isPassing: average >= 60,
+        };
+      });
+
+      // --- Analytics Computation ---
+      function computeCohortAnalytics(students) {
+        // every: check if every student passed
+        const allPassed = students.every((s) => s.isPassing);
+
+        // some: check if any student has an A grade
+        const hasPerfectA = students.some((s) => s.grade === "A");
+
+        // find: locate first student requiring intervention
+        const interventionCandidate = students.find((s) => s.average < 50);
+
+        // reduce: calculate letter grade frequency
+        const distribution = students.reduce((acc, s) => {
+          acc[s.grade] = (acc[s.grade] || 0) + 1;
+          return acc;
+        }, {});
+
+        return {
+          allPassed,
+          hasPerfectA,
+          urgentStudent: interventionCandidate
+            ? interventionCandidate.name
+            : "None",
+          distribution,
+        };
+      }
+
+      // --- DOM Renderer ---
+      function render() {
+        const tbody = document.getElementById("studentTableBody");
+        const statsBox = document.getElementById("statsContainer");
+
+        // filter: conditionally select visible rows
+        let visibleStudents = processedStudents;
+        if (currentFilter === "honor") {
+          visibleStudents = processedStudents.filter((s) => s.average >= 90);
+        } else if (currentFilter === "atRisk") {
+          visibleStudents = processedStudents.filter((s) => s.average < 60);
+        }
+
+        // map: build HTML table rows
+        tbody.innerHTML = visibleStudents
+          .map(
+            (s) => `
+        <tr>
+          <td>${s.id}</td>
+          <td><strong>${s.name}</strong></td>
+          <td>${s.rawScores}</td>
+          <td>${s.average}</td>
+          <td><span class="grade-badge grade-${s.grade}">${s.grade}</span></td>
+        </tr>
+      `,
+          )
+          .join("");
+
+        // Compute analytics
+        const analytics = computeCohortAnalytics(processedStudents);
+
+        // format grade distribution string
+        let distStr = "";
+        // forEach: format grade frequencies
+        Object.entries(analytics.distribution).forEach(([grd, count]) => {
+          distStr += `${grd}: ${count} | `;
+        });
+
+        statsBox.innerHTML = `
+        <div class="stat-card">
+          <h4>Accreditation Status</h4>
+          <p>${analytics.allPassed ? "100% Passing" : "Action Required"}</p>
+        </div>
+        <div class="stat-card">
+          <h4>Contains "A" Students</h4>
+          <p>${analytics.hasPerfectA ? "Yes" : "No"}</p>
+        </div>
+        <div class="stat-card">
+          <h4>Urgent Intervention</h4>
+          <p>${analytics.urgentStudent}</p>
+        </div>
+        <div class="stat-card">
+          <h4>Grade Breakdown</h4>
+          <p style="font-size:0.9rem;">${distStr.slice(0, -3)}</p>
+        </div>
+      `;
+      }
+
+      // Button event listeners
+      document.getElementById("filterAll").addEventListener("click", (e) => {
+        setActiveButton(e.target);
+        currentFilter = "all";
+        render();
+      });
+      document.getElementById("filterHonor").addEventListener("click", (e) => {
+        setActiveButton(e.target);
+        currentFilter = "honor";
+        render();
+      });
+      document.getElementById("filterAtRisk").addEventListener("click", (e) => {
+        setActiveButton(e.target);
+        currentFilter = "atRisk";
+        render();
+      });
+
+      const setActiveButton = (btn) => {
+        document
+          .querySelectorAll(".toolbar button")
+          .forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+      };
+
+      // Initial run
+      render();
+    </script>
+  </body>
+</html>

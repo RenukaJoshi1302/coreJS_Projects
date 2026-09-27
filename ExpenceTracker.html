@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <body>
+    <h2>Mini Expense Tracker</h2>
+    <input type="text" id="desc" placeholder="Expense description..." />
+    <input type="number" id="cost" placeholder="Cost ($)" />
+    <button onclick="addExpense()">Add Expense</button>
+
+    <ul id="expenseList"></ul>
+    <div id="summary"></div>
+
+    <script>
+      let expenses = [
+        { id: 1, title: "Coffee", cost: 5 },
+        { id: 2, title: "Groceries", cost: 65 },
+      ];
+
+      function addExpense() {
+        const descInput = document.getElementById("desc");
+        const costInput = document.getElementById("cost");
+
+        const title = descInput.value.trim();
+        const cost = Number(costInput.value); // Convert string to number
+
+        if (!title || cost <= 0) return;
+
+        expenses.push({ id: Date.now(), title, cost });
+        descInput.value = "";
+        costInput.value = "";
+        render();
+      }
+
+      function removeExpense(id) {
+        expenses = expenses.filter((e) => e.id !== id);
+        render();
+      }
+
+      function render() {
+        const list = document.getElementById("expenseList");
+        const summary = document.getElementById("summary");
+
+        // map(): Convert expenses to list items
+        list.innerHTML = expenses
+          .map(
+            (e) => `
+        <li>
+          ${e.title}: $${e.cost.toFixed(2)}
+          <button onclick="removeExpense(${e.id})">x</button>
+        </li>
+      `,
+          )
+          .join("");
+
+        // reduce(): Sum total money spent
+        const total = expenses.reduce((acc, curr) => acc + curr.cost, 0);
+
+        // some(): Check if at least ONE purchase is a high-cost splurge (> $50)
+        const hasBigSplurge = expenses.some((e) => e.cost > 50);
+
+        summary.innerHTML = `
+        <p>Total Spent: <strong>$${total.toFixed(2)}</strong></p>
+        <p>Contains expensive purchase (> $50): <strong>${hasBigSplurge ? "Yes" : "No"}</strong></p>
+      `;
+      }
+
+      render();
+    </script>
+  </body>
+</html>
